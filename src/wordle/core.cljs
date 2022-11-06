@@ -7,7 +7,6 @@
    [wordle.config :as config]))
 
 
-
 (defn dev-setup []
   (when config/debug?
     (println "dev mode")))
