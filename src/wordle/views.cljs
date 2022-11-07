@@ -16,38 +16,34 @@
 (defn get-id [r c]
   (str r "-" c))
 
-(defn wordle? [curr answer]
-  (let [r               (:r @curr)
-        c               (:c @curr)
-        ax              (map char answer)
-        wx              (for [i (range c)]
-                          (.-innerHTML (.getElementById js/document (get-id r i))))
-        common-letters  (clojure.set/intersection (set ax) (set wx))
-        correct-letters (map = ax wx)]
-    (doseq [i (range c)]
-      (let [contains (contains? common-letters (.-innerHTML (.getElementById js/document (get-id r i))))
-            correct  (nth correct-letters i)]
-        (cond
-          correct
-          (-> (.getElementById js/document (get-id r i))
-              (.-classList)
-              (.add "correct"))
+(defn update-result
+  "input : [`w` `a` `t` `e` `r`]
+   answer : [`p` `o` `w` `e` `r`]
+   input과 answer가 완벽히 일치하면 solved event를 dispatch"
+  [input answer]
+  #_(let [correct-letters (map = input answer)]
+      (cond
+        (every? true? correct-letters)
+        (dispatch [::events/update-status :solved]))))
 
-          contains
-          (-> (.getElementById js/document (get-id r i))
-              (.-classList)
-              (.add "present"))
-
-          :else
-          (-> (.getElementById js/document (get-id r i))
-              (.-classList)
-              (.add "absent")))))
-    (cond
-      (every? true? correct-letters)
-      (dispatch [::events/update-status :solved])
-
-      (>= r 5)
-      (dispatch [::events/update-status :failed]))))
+(defn wordle-match?
+  "input : [`w` `a` `t` `e` `r`]
+   answer : [`p` `o` `w` `e` `r`]
+   output : [:contain :none :none :correct :correct]
+   포함하지만 같은 위치가 아닌 경우 -> :contain
+   포함하고 위치가 같은 경우 -> :correct
+   포함하지 않는 경우 -> :none"
+  [input answer]
+  #_(let [answer-set (set answer)]
+      (->> input
+           (map (fn [c c']
+                  (cond
+                    (= c c')
+                    :correct
+                    (contains? answer-set c')
+                    :contain
+                    :else
+                    :none)) answer))))
 
 (defn key-up-event [e]
   (let [curr      (re-frame/subscribe [::subs/curr])
@@ -71,9 +67,32 @@
 
       (and (= input "Enter")
            (>= (:c @curr) @column))
-      (do
-        (dispatch [::events/next-position])
-        (wordle? curr @answer))
+      (let [r               (:r @curr)
+            c               (:c @curr)
+            ax              (map char @answer)
+            wx              (for [i (range c)]
+                              (.-innerHTML (.getElementById js/document (get-id r i))))
+            result (wordle-match? wx ax)]
+        (doseq [i (range c)]
+          (cond
+            (= :correct (nth result i))
+            (-> (.getElementById js/document (get-id r i))
+                (.-classList)
+                (.add "correct"))
+
+            (= :contain (nth result i))
+            (-> (.getElementById js/document (get-id r i))
+                (.-classList)
+                (.add "present"))
+
+            :else
+            (-> (.getElementById js/document (get-id r i))
+                (.-classList)
+                (.add "absent"))))
+        (update-result wx ax)
+        (if (>= r 5)
+          (dispatch [::events/update-status :failed])
+          (dispatch [::events/next-position])))
 
       :else
       (js/alert "Invalid!"))))
@@ -95,7 +114,6 @@
       (for [i (range @row)]
         (for [j (range @column)]
           (letter-input i j)))]
-     [:br]
      (cond
        (= @status :solved)
        (js/alert "Congratz!")
