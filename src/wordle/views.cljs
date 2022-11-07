@@ -19,7 +19,8 @@
 (defn update-result
   "input : [`w` `a` `t` `e` `r`]
    answer : [`p` `o` `w` `e` `r`]
-   input과 answer가 완벽히 일치하면 solved event를 dispatch"
+   input과 answer가 완벽히 일치하면 아래의 코드를 실행.
+   (dispatch [::events/update-status :solved])"
   [input answer]
   #_(let [correct-letters (map = input answer)]
       (cond
