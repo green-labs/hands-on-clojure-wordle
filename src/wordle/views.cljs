@@ -21,8 +21,9 @@
    answer : [`p` `o` `w` `e` `r`]
    input과 answer가 완벽히 일치하면 아래의 코드를 실행.
    (dispatch [::events/update-status :solved])"
-  [input answer])
-
+  [input answer]
+  (when (= input answer)
+    (dispatch [::events/update-status :solved])))
 
 (defn wordle-match?
   "input : [`w` `a` `t` `e` `r`]
@@ -31,7 +32,14 @@
    포함하지만 같은 위치가 아닌 경우 -> :contain
    포함하고 위치가 같은 경우 -> :correct
    포함하지 않는 경우 -> :none"
-  [input answer])
+  [input answer]
+  (let [answer-set (set answer)]
+    (->> input
+         (map (fn [c c']
+                (cond
+                  (= c c') :correct
+                  (contains? answer-set c') :contain
+                  :else :none)) answer))))
 
 (defn key-up-event [e]
   (let [curr      (re-frame/subscribe [::subs/curr])
@@ -109,6 +117,30 @@
        (= @status :failed)
        [:h1 {:id "answer"} @answer])]))
 
+
+(comment
+  (def input (vec (map char "WATER")))
+  (def answer (vec (map char "POWER")))
+
+  (->> input
+       (map (fn [c c']
+              (cond
+                (= c c') :correct
+                (contains? (set answer) c') :contains
+                :else :none)) answer))
+  (cond
+    (> 1 2) "correct"
+    (> 2 1) "yes!")
+
+  (contains? (set answer) "T")
+
+  ;; :contain, :none, :correct
+  (->> input
+       (map (fn [c c']
+              (cond
+                false :contain
+                false :none
+                (= c c') :correct)) answer)))
 
 
 
